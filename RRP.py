@@ -63,10 +63,10 @@ class RRP:
                             processor_now = ET.SubElement(processor_table, 'Processor')
                             processor_now.set('id', str(CPU_counter))
                             processor_now.set('frequency',str(processor_freq)+'Mhz')
-                            #self.output_launch_table(processor_now, lt, time_slice_len)
+                            self.output_launch_table(processor_now, lt, time_slice_len)
                             self.print_launch_table(lt)
                             CPU_counter += 1
-                    #tree.write(xml_file_name)
+                    tree.write(xml_file_name)
                 else:
                     #execute Magic7 here
                     print("Executing Magic7.\n")
