@@ -149,7 +149,7 @@ class RRP:
                     standard_p1.append(t_now)
                 standard_p2 = []
                 for k in range(q_left):
-                    t_now = int(math.floor(k*p/(p-q)))%p
+                    t_now = int(math.floor(k*p/(q_left)))%p
                     standard_p2.append(t_now)
                 #find potential delta1 first (delta<p)
                 for delta1 in range(p):
