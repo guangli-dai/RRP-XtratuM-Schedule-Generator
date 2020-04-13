@@ -4,6 +4,8 @@ author: Guangli Dai @RTLab @UH
 import math
 import copy
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
+
 class Partition:
     def __init__(self, wcet, period, partition_id):
         '''
@@ -51,12 +53,17 @@ class RRP:
                     if launch_tables is None:
                         return False
                     CPU_counter = 0
-                    (tree, processor_table) = self.parse_xml(xml_file_name)
-                    if tree is None or processor_table is None:
-                        return False
-                    #wipe the processors out first
-                    for processor in processor_table.findall('{http://www.xtratum.org/xm-arm-2.x}Processor'):
-                        processor_table.remove(processor)
+                    if self.simplified:
+                        #create a node to build on with
+                        processor_table = ET.Element('ProcessorTable')
+                        xml_file_name = 'RRPOutput.xml'
+                    else:
+                        (root, processor_table) = self.parse_xml(xml_file_name)
+                        if root is None or processor_table is None:
+                            return False
+                        #wipe the processors out first
+                        for processor in processor_table.findall('{http://www.xtratum.org/xm-arm-2.x}Processor'):
+                            processor_table.remove(processor)
                     for lt in launch_tables:
                             #update the processor information
                             print("Launch table for CPU "+str(CPU_counter)+" :")
@@ -66,7 +73,12 @@ class RRP:
                             self.output_launch_table(processor_now, lt, time_slice_len)
                             self.print_launch_table(lt)
                             CPU_counter += 1
-                    tree.write(xml_file_name)
+                    if self.simplified:
+                        root = processor_table
+                    xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(indent="   ")
+                    #tree.write(xml_file_name)
+                    with open(xml_file_name,"w") as f:
+                        f.write(xmlstr)
                 else:
                     #execute Magic7 here
                     print("Executing Magic7.\n")
@@ -78,20 +90,29 @@ class RRP:
                         return False
                     print("Launch table generated is:")
                     self.print_launch_table(launch_table)
-                    #retrieve the node in the xml file
-                    (tree, processor_table) = self.parse_xml(xml_file_name)
-                    if tree is None or processor_table is None:
-                        return False 
-                    #wipe the processors out first
-                    for processor in processor_table.findall('{http://www.xtratum.org/xm-arm-2.x}Processor'):
-                        #print(processor.tag)
-                        processor_table.remove(processor)
+                    if self.simplified:
+                        processor_table = ET.Element("ProcessorTable")
+                        xml_file_name = 'RRPOutput.xml'
+                    else:
+                        #retrieve the node in the xml file
+                        (root , processor_table) = self.parse_xml(xml_file_name)
+                        if root is None or processor_table is None:
+                            return False 
+                        #wipe the processors out first
+                        for processor in processor_table.findall('{http://www.xtratum.org/xm-arm-2.x}Processor'):
+                            #print(processor.tag)
+                            processor_table.remove(processor)
                     #write the Processor in 
                     processor = ET.SubElement(processor_table, 'Processor')
                     processor.set('frequency',str(processor_freq)+'Mhz')
                     processor.set('id','0')
                     self.output_launch_table(processor, launch_table, time_slice_len)
-                    tree.write(xml_file_name)
+                    if self.simplified:
+                        root = processor_table
+                    xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(indent="   ")
+                    with open(xml_file_name, "w") as f:
+                        f.write(xmlstr)
+                    #tree.write(xml_file_name)
                 return True
 
     def cal_hyperperiod(self, par_list):
@@ -149,7 +170,7 @@ class RRP:
                     standard_p1.append(t_now)
                 standard_p2 = []
                 for k in range(q_left):
-                    t_now = int(math.floor(k*p/(q_left)))%p
+                    t_now = int(math.floor(k*p/(p-q)))%p
                     standard_p2.append(t_now)
                 #find potential delta1 first (delta<p)
                 for delta1 in range(p):
@@ -417,7 +438,7 @@ class RRP:
                 Args:
                         xml_file_name:               type:string; The name of the target xml file.
                 Returns:
-                        A tuple. The first element is the tree handle of the whole xml file. The second element that contains the node of ProcessorTable.
+                        A tuple. The first element is the root element of the whole xml file. The second element that contains the node of ProcessorTable.
                         If the file passed in does not fit the format, a None will be returned.
                 '''
                 try:
@@ -434,7 +455,7 @@ class RRP:
                             break
                     if processor_table is None:
                         processor_table = ET.SubElement(hw_description, 'ProcessorTable')
-                    return (tree, processor_table)
+                    return (root, processor_table)
                 except (ET.ParseError, IndexError):
                     print('The given xml file is not properly formatted.')
                     return (None,None)
@@ -445,6 +466,12 @@ class RRP:
                 This function helps retrieve partitions' information from the input.
                 Target file and the frequency of processors are required to be inserted as well.
                 '''
+                temp_simplified = input("Do you want a simplified schedule (you may have to change and fill details):")
+                if temp_simplified[0]=='Y' or temp_simplified[0]=='y':
+                    self.simplified = True
+                else:
+                    self.simplified = False
+
                 par_num = input("Please input the number of partitions: ")
                 ps = []
                 for i in range(int(par_num)):
@@ -454,18 +481,22 @@ class RRP:
                     par_now = Partition(float(wcet_now), float(period_now), int(id_now))
                     ps.append(par_now)
                 CPU_num = int(input("Please input the number of processors:"))
-                xml_file_name = input("Please input the file name of xml (default value is \'./xm_cf.arm.xml\''):")
-                if xml_file_name == '':
-                    xml_file_name = 'xm_cf.arm.xml'
-                processor_freq = input("Please input the frequency of processors (default value is 400Mhz):")
-                if processor_freq == '':
-                    processor_freq = 400
-                processor_freq = int(processor_freq)
                 time_slice_len = input("Please input the length of each time slice (default value is 100ms):")
                 if time_slice_len == '':
                     time_slice_len = 100
                 time_slice_len = int(time_slice_len)
-                self.set_partitions(ps, CPU_num, time_slice_len, xml_file_name, processor_freq)
+                if self.simplified:
+                    self.set_partitions(ps,CPU_num, time_slice_len)
+                else:
+                    xml_file_name = input("Please input the file name of xml (default value is \'./xm_cf.arm.xml\''):")
+                    if xml_file_name == '':
+                        xml_file_name = 'xm_cf.arm.xml'
+                    processor_freq = input("Please input the frequency of processors (default value is 400Mhz):")
+                    if processor_freq == '':
+                        processor_freq = 400
+                    processor_freq = int(processor_freq)
+                    self.set_partitions(ps, CPU_num, time_slice_len, xml_file_name, processor_freq)
+
 
 
 #main function
