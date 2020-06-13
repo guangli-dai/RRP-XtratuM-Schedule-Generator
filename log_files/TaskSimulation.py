@@ -17,7 +17,7 @@ def file_analysis(filename):
 	'''
 	This function analyzes the file with filename and stores the result to lists of time_spot objects.
 	'''
-	print("reading")
+	#print("reading")
 	p1_list = []
 	p2_list = []
 	with open(filename, 'r') as f:
@@ -89,7 +89,7 @@ def execute_task(task_now, p_list):
 
 	start_counter = p_list[index_start].counter - (p_list[index_start].time - task_now.arrival_time)/(p_list[index_start].time - p_list[index_start-1].time)*(p_list[index_start].counter - p_list[index_start-1].counter)
 	start_counter = int(start_counter)
-	print('Start counter is:'+str(start_counter))
+	#print('Start counter is:'+str(start_counter))
 	end_counter = start_counter + task_now.wcet
 	index_end = search_counter(end_counter, p_list)
 	if index_end == -1:
@@ -98,28 +98,58 @@ def execute_task(task_now, p_list):
 	while index_end>0 and p_list[index_end].counter == p_list[index_end-1].counter:
 		index_end -= 1
 	end_time = p_list[index_end].time - (p_list[index_end].counter - end_counter)/(p_list[index_end].counter - p_list[index_end-1].counter)*(p_list[index_end].time - p_list[index_end-1].time)
-	print(end_time)
+	#print(end_time)
 	if end_time > task_now.deadline:
 		return False
 	return True
 
-def generate_task(density):
-	inc_per_us = 2.4239
+def generate_task(density, wcet_min, wcet_max):
+	'''
+	Note that wcet_min and wcet_max are all given in ms.
+	'''
+	inc_per_us = 2.423
 	arrival_time = random.randint(150000, 300000)
-	wcet = random.randint(10000, 100000)
-	ddl = (wcet/inc_per_us)/density + arrival_time
-	print(arrival_time)
-	print(wcet)
-	print(ddl)
+	wcet = random.randint(wcet_min, wcet_max) * 1000
+	ddl = wcet/density + arrival_time
+	wcet = wcet*inc_per_us
+	#print(arrival_time)
+	#print(wcet)
+	#print(ddl)
 	task_now = task(arrival_time, wcet,ddl)
 	return task_now
 
 
-if len(sys.argv) >1:
-	
-(p1_list, p2_list) = file_analysis('3_7_4_7_RRP_10ms.log')
-#print(p1_list)
-for i in range(1000):
+if len(sys.argv) < 7:
+	print("Usage: Input the name of the log, start, end, step length of the density together with the smallest wcet and largest wcet.")
+	sys.exit(1)
+REPEAT_TIMES = 50
+file_name = sys.argv[1]
+start_den = float(sys.argv[2])
+end_den = float(sys.argv[3])
+step_den = float(sys.argv[4])
+wcet_min = float(sys.argv[5])
+wcet_max = float(sys.argv[6])
+output_file_name = file_name +'-' + str(start_den) + '-' + str(end_den) + '-' + str(step_den)+'-' + str(wcet_min)+'-'+str(wcet_max)+'.csv'
 
-task_now = generate_task(0.45)
-print(execute_task(task_now, p1_list))
+(p1_list, p2_list) = file_analysis(file_name)
+if file_name.find('naive')==-1:
+	p_list = p1_list
+else:
+	p_list = p2_list
+output_content = []
+density = start_den
+while density <= end_den:
+	ontime_num = 0
+	for i in range(REPEAT_TIMES):
+		task_now = generate_task(density, wcet_min, wcet_max)
+		if execute_task(task_now, p_list):
+			ontime_num += 1
+		#else:
+		#	print(str(task_now.arrival_time)+','+str(task_now.wcet)+','+str(task_now.deadline))
+	output_content.append(str(density)+','+str(ontime_num/REPEAT_TIMES))
+	density += step_den
+	print('Density '+str(density)+' tested.')
+
+with open(output_file_name, 'w') as f:
+	for c in output_content:
+		f.write(c + '\n')

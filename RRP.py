@@ -317,29 +317,36 @@ class RRP:
                         launch_tables.append(temp)
                 return launch_tables
 
-    def z_approx(self, w, n):
-                '''
-                This function returns the corresponding approximate availability factor under base Z n,2.
-                '''
-                i = 1
-                j = 0
-                m = 2
-                largest = 1
-                result = (1,1,1)
-                while True:
-                        if (n-i)/n >= w and (n-i != 1):
-                                largest = (n-i)/n
-                                result = (largest, n-i, n)
-                                i += 1
-                        else:
-                                denom = n*m**j
-                                if 1/denom >=w:
-                                        largest = 1/denom
-                                        result = (largest, 1, denom)
-                                        j += 1
-                                else:
-                                        return result
+    def z_approx(self, availability_factor, factor):
+                aaf = 1
+                w = 1
+                p = 1
+                if availability_factor == 0:
+                        return (aaf, w, p)
+                elif availability_factor > 0 and availability_factor < 1.0/factor:
+                        n = math.floor(self.approximate_value(math.log(factor*availability_factor)/math.log(0.5)))
+                        aaf = 1/(factor*(2**n))
+                        w   = 1
+                        p   = (factor*(2**n))
+                        return (aaf, w, p)
+                elif availability_factor >= 1.0/factor and availability_factor <= (factor - 1)/ factor:
+                        aaf = (math.ceil(self.approximate_value(factor*availability_factor)))/factor
+                        w   = math.ceil(self.approximate_value(factor*availability_factor))
+                        p   = factor
+                        return (aaf, w, p)
+                elif availability_factor > (factor - 1)/factor and availability_factor < 1:
+                        n = math.ceil(self.approximate_value(math.log(factor*(1-availability_factor))/math.log(0.5)))
+                        aaf = 1-(1/(factor*(2**n)))
+                        p   = factor*(2**n)
+                        w   = factor*(2**n) - 1
+                        return (aaf, w, p)
+                else:
+                        aaf = 1
+                        p   = 1
+                        w   = 1
+                        return (aaf, w, p)eturn result
                 return -1
+                
     def MulZ_alloc(self, par, pcpu_factors, pcpu_rests):
                 '''
                 Args:

@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<ProcessorTable>
+   <Processor frequency="400Mhz" id="0">
+      <CyclicPlanTable>
+         <Plan id="0" majorFrame="70ms">
+            <Slot duration="20ms" id="0" partitionId="2" start="0ms"/>
+            <Slot duration="10ms" id="1" partitionId="1" start="20ms"/>
+            <Slot duration="10ms" id="2" partitionId="2" start="30ms"/>
+            <Slot duration="10ms" id="3" partitionId="1" start="40ms"/>
+            <Slot duration="10ms" id="4" partitionId="2" start="50ms"/>
+            <Slot duration="10ms" id="5" partitionId="1" start="60ms"/>
+         </Plan>
+      </CyclicPlanTable>
+   </Processor>
+</ProcessorTable>
